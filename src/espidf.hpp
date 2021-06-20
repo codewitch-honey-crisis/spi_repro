@@ -161,23 +161,6 @@ IRAM_ATTR void lcd_spi_pre_transfer_callback(spi_transaction_t *t)
     gpio_set_level(PIN_NUM_DC, dc);
 }
 
-uint32_t lcd_get_id(spi_device_handle_t spi)
-{
-    //get_id cmd
-    lcd_cmd(spi, 0x04);
-
-    spi_transaction_t t;
-    memset(&t, 0, sizeof(t));
-    t.length=8*3;
-    t.flags = SPI_TRANS_USE_RXDATA;
-    t.user = (void*)1;
-
-    esp_err_t ret = spi_device_polling_transmit(spi, &t);
-    assert( ret == ESP_OK );
-
-    return *(uint32_t*)t.rx_data;
-}
-
 //Initialize the display
 void lcd_init(spi_device_handle_t spi)
 {
@@ -212,55 +195,27 @@ void lcd_init(spi_device_handle_t spi)
 }
 
 
+
 static void fill_screen(spi_device_handle_t spi, uint16_t color)
 {
-    esp_err_t ret;
-    int x;
-    //Transaction descriptors. Declared static so they're not allocated on the stack; we need this memory even when this
-    //function is finished because the SPI driver needs access to it even while we're already calculating the next line.
-    static spi_transaction_t trans[6];
-
-    //In theory, it's better to initialize trans and data only once and hang on to the initialized
-    //variables. We allocate them on the stack, so we need to re-init them each call.
-    for (x=0; x<6; x++) {
-        memset(&trans[x], 0, sizeof(spi_transaction_t));
-        if ((x&1)==0) {
-            //Even transfers are commands
-            trans[x].length=8;
-            trans[x].user=(void*)0;
-        } else {
-            //Odd transfers are data
-            trans[x].length=8*4;
-            trans[x].user=(void*)1;
-        }
-        trans[x].flags=SPI_TRANS_USE_TXDATA;
-    }
-    trans[0].tx_data[0]=0x2A;           //Column Address Set
-    trans[1].tx_data[0]=0;              //Start Col High
-    trans[1].tx_data[1]=0;              //Start Col Low
-    trans[1].tx_data[2]=(320)>>8;       //End Col High
-    trans[1].tx_data[3]=(320)&0xff;     //End Col Low
-    trans[2].tx_data[0]=0x2B;           //Page address set
-    trans[3].tx_data[0]=0;        //Start page high
-    trans[3].tx_data[1]=0;      //start page low
-    trans[3].tx_data[2]=(240)>>8;    //end page high
-    trans[3].tx_data[3]=(240)&0xff;  //end page low
-    trans[4].tx_data[0]=0x2C;           //memory write
-    
-    //Queue all transactions.
-    for (x=0; x<5; x++) {
-        ret=spi_device_polling_transmit(spi,&trans[x]);
-        assert(ret==ESP_OK);
-    }
-    uint16_t data[320];
-    for(int i = 0;i<320;++i) data[i]=color;
-    trans[5].tx_buffer = data;
-    trans[5].length = 320*16;
-    trans[x].flags&=~SPI_TRANS_USE_TXDATA;
+    uint8_t data[4];
+    lcd_cmd(spi,0x2a);
+    data[0]=data[1]=0;
+    data[2]=320>>8;
+    data[3]=320&0xFF;
+    lcd_data(spi,data,4);
+    lcd_cmd(spi,0x2b);
+    data[0]=data[1]=0;
+    data[2]=240>>8;
+    data[3]=240&0xFF;
+    lcd_data(spi,data,4);
+    lcd_cmd(spi,0x2c);
+    uint16_t fdata[320];
+    for(int i = 0;i<320;++i) fdata[i]=color;
     for(int y = 0;y<240;++y) {
-        ret=spi_device_polling_transmit(spi,&trans[5]);
-        assert(ret==ESP_OK);
+        lcd_data(spi,(uint8_t*)fdata,640);
     }
+
 
 }
 
