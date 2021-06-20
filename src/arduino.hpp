@@ -120,7 +120,7 @@ void lcd_data(const uint8_t data) {
     spi.endTransaction();
     digitalWrite(PIN_NUM_CS,HIGH);
 }
-static void fill_screen(uint16_t color)
+static uint64_t fill_screen(uint16_t color)
 {
     uint8_t data[4];
     lcd_cmd(0x2a);
@@ -135,11 +135,14 @@ static void fill_screen(uint16_t color)
     lcd_data(data,4);
     lcd_cmd(0x2c);
     uint16_t fdata[320];
+    
     for(int i = 0;i<320;++i) fdata[i]=color;
+    uint64_t start = esp_timer_get_time();
     for(int y = 0;y<240;++y) {
         lcd_data((uint8_t*)fdata,640);
     }
-
+    uint64_t end = esp_timer_get_time();
+    return end-start;
 }
 //Initialize the display
 void lcd_init()
@@ -184,10 +187,7 @@ void loop() {
     uint64_t total = 0;
     for(int i = 0;i<50;++i) {
         uint16_t color = rand()%65536;
-        uint64_t start = esp_timer_get_time();
-        fill_screen(color);
-        uint64_t end = esp_timer_get_time();
-        total += (end-start);
+        total += fill_screen(color);
     }
     Serial.printf("Average frame write over 50 iterations is %llu microseconds per frame\r\n",total/50);
 }

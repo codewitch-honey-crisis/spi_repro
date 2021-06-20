@@ -183,7 +183,7 @@ void lcd_init(spi_device_handle_t spi)
 
 uint16_t fdata[320*PARALLEL_LINES];
 
-static void fill_screen(spi_device_handle_t spi, uint16_t color)
+static uint64_t fill_screen(spi_device_handle_t spi, uint16_t color)
 {
     uint8_t data[4];
     lcd_cmd(spi,0x2a);
@@ -199,10 +199,12 @@ static void fill_screen(spi_device_handle_t spi, uint16_t color)
     lcd_cmd(spi,0x2c);
     
     for(int i = 0;i<320*PARALLEL_LINES;++i) fdata[i]=color;
+    uint64_t start = esp_timer_get_time();
     for(int y = 0;y<240;y+=PARALLEL_LINES) {
         lcd_data(spi,(uint8_t*)fdata,320*2*PARALLEL_LINES);
     }
-
+    uint64_t end = esp_timer_get_time();
+    return end-start;
 
 }
 
@@ -253,10 +255,7 @@ void app_main(void)
         uint64_t total = 0;
         for(int i = 0;i<50;++i) {
             uint16_t color = rand()%65536;
-            uint64_t start = esp_timer_get_time();
-            fill_screen(spi,color);
-            uint64_t end = esp_timer_get_time();
-            total += (end-start);
+            total += fill_screen(spi,color);
             vTaskDelay(1);
         }
         printf("Average frame write over 50 iterations is %llu microseconds per frame\r\n",total/50);
