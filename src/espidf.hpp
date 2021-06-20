@@ -196,10 +196,10 @@ static void fill_screen(spi_device_handle_t spi, uint16_t color)
     data[3]=240&0xFF;
     lcd_data(spi,data,4);
     lcd_cmd(spi,0x2c);
-    uint16_t fdata[320];
-    for(int i = 0;i<320;++i) fdata[i]=color;
-    for(int y = 0;y<240;++y) {
-        lcd_data(spi,(uint8_t*)fdata,640);
+    uint16_t fdata[640];
+    for(int i = 0;i<640;++i) fdata[i]=color;
+    for(int y = 0;y<240;y+=2) {
+        lcd_data(spi,(uint8_t*)fdata,640*2);
     }
 
 
@@ -215,7 +215,7 @@ void app_main(void)
         .sclk_io_num=PIN_NUM_CLK,
         .quadwp_io_num=-1,
         .quadhd_io_num=-1,
-        .max_transfer_sz=320*2+8,
+        .max_transfer_sz=320*2*2+8,
         .flags = 0,
         .intr_flags =0
     };
