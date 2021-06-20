@@ -39,6 +39,7 @@ extern "C" { void app_main(); }
 #define PIN_NUM_RST  GPIO_NUM_18
 #define PIN_NUM_BCKL GPIO_NUM_5
 
+#define PARALLEL_LINES 16
 /*
  The LCD needs a bunch of command/argument values to be initialized. They are stored in this struct.
 */
@@ -180,7 +181,7 @@ void lcd_init(spi_device_handle_t spi)
     gpio_set_level(PIN_NUM_BCKL, 0);
 }
 
-
+uint16_t fdata[320*PARALLEL_LINES];
 
 static void fill_screen(spi_device_handle_t spi, uint16_t color)
 {
@@ -196,10 +197,10 @@ static void fill_screen(spi_device_handle_t spi, uint16_t color)
     data[3]=240&0xFF;
     lcd_data(spi,data,4);
     lcd_cmd(spi,0x2c);
-    uint16_t fdata[640];
-    for(int i = 0;i<640;++i) fdata[i]=color;
-    for(int y = 0;y<240;y+=2) {
-        lcd_data(spi,(uint8_t*)fdata,640*2);
+    
+    for(int i = 0;i<320*PARALLEL_LINES;++i) fdata[i]=color;
+    for(int y = 0;y<240;y+=PARALLEL_LINES) {
+        lcd_data(spi,(uint8_t*)fdata,320*2*PARALLEL_LINES);
     }
 
 
@@ -215,7 +216,7 @@ void app_main(void)
         .sclk_io_num=PIN_NUM_CLK,
         .quadwp_io_num=-1,
         .quadhd_io_num=-1,
-        .max_transfer_sz=320*2*2+8,
+        .max_transfer_sz=320*2*PARALLEL_LINES+8,
         .flags = 0,
         .intr_flags =0
     };
