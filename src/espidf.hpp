@@ -253,9 +253,9 @@ void app_main(void)
         uint64_t total = 0;
         for(int i = 0;i<50;++i) {
             uint16_t color = rand()%65536;
-            int64_t start = esp_timer_get_time();
+            uint64_t start = esp_timer_get_time();
             fill_screen(spi,color);
-            int64_t end = esp_timer_get_time();
+            uint64_t end = esp_timer_get_time();
             total += (end-start);
             vTaskDelay(1);
         }

@@ -184,9 +184,9 @@ void loop() {
     uint64_t total = 0;
     for(int i = 0;i<50;++i) {
         uint16_t color = rand()%65536;
-        int64_t start = esp_timer_get_time();
+        uint64_t start = esp_timer_get_time();
         fill_screen(color);
-        int64_t end = esp_timer_get_time();
+        uint64_t end = esp_timer_get_time();
         total += (end-start);
     }
     Serial.printf("Average frame write over 50 iterations is %llu microseconds per frame\r\n",total/50);
