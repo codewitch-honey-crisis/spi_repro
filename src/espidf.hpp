@@ -48,12 +48,6 @@ typedef struct {
     uint8_t databytes; //No of data in data; bit 7 = delay after set; 0xFF = end of cmds.
 } lcd_init_cmd_t;
 
-typedef enum {
-    LCD_TYPE_ILI = 1,
-    LCD_TYPE_ST,
-    LCD_TYPE_MAX,
-} type_lcd_t;
-
 DRAM_ATTR static const lcd_init_cmd_t ili_init_cmds[]={
     /* Power contorl B, power control = 0, DC_ENA = 1 */
     {0xCF, {0x00, 0x83, 0X30}, 3},
@@ -123,14 +117,14 @@ DRAM_ATTR static const lcd_init_cmd_t ili_init_cmds[]={
  */
 void lcd_cmd(spi_device_handle_t spi, const uint8_t cmd)
 {
-    esp_err_t ret;
     spi_transaction_t t;
     memset(&t, 0, sizeof(t));       //Zero out the transaction
     t.length=8;                     //Command is 8 bits
     t.tx_buffer=&cmd;               //The data is the cmd itself
-    t.user=(void*)0;                //D/C needs to be set to 0
-    ret=spi_device_polling_transmit(spi, &t);  //Transmit!
-    assert(ret==ESP_OK);            //Should have had no issues.
+    //t.user=(void*)0;                //D/C needs to be set to 0
+    gpio_set_level(PIN_NUM_DC, 0);
+    spi_device_polling_transmit(spi, &t);  //Transmit!
+    gpio_set_level(PIN_NUM_DC, 1);
 }
 
 /* Send data to the LCD. Uses spi_device_polling_transmit, which waits until the
@@ -142,23 +136,15 @@ void lcd_cmd(spi_device_handle_t spi, const uint8_t cmd)
  */
 void lcd_data(spi_device_handle_t spi, const uint8_t *data, int len)
 {
-    esp_err_t ret;
     spi_transaction_t t;
     if (len==0) return;             //no need to send anything
     memset(&t, 0, sizeof(t));       //Zero out the transaction
     t.length=len*8;                 //Len is in bytes, transaction length is in bits.
     t.tx_buffer=data;               //Data
-    t.user=(void*)1;                //D/C needs to be set to 1
-    ret=spi_device_polling_transmit(spi, &t);  //Transmit!
-    assert(ret==ESP_OK);            //Should have had no issues.
-}
-
-//This function is called (in irq context!) just before a transmission starts. It will
-//set the D/C line to the value indicated in the user field.
-IRAM_ATTR void lcd_spi_pre_transfer_callback(spi_transaction_t *t)
-{
-    int dc=(int)t->user;
-    gpio_set_level(PIN_NUM_DC, dc);
+    //t.user=(void*)1;                //D/C needs to be set to 1
+//    gpio_set_level(PIN_NUM_DC, 1);
+    spi_device_polling_transmit(spi, &t);  //Transmit!
+    
 }
 
 //Initialize the display
@@ -250,7 +236,7 @@ void app_main(void)
         .spics_io_num=PIN_NUM_CS,               //CS pin
         .flags =0,
         .queue_size=7,                          //We want to be able to queue 7 transactions at a time
-        .pre_cb=lcd_spi_pre_transfer_callback,  //Specify pre-transfer callback to handle D/C line
+        .pre_cb=NULL,  //Specify pre-transfer callback to handle D/C line
         .post_cb=NULL
     };
     //Initialize the SPI bus
